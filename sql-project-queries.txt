@@ -1,0 +1,60 @@
+/* What is the revenue from the top 10 most played tracks */
+SELECT t.Name AS song,
+       COUNT(p.TrackId) AS times
+FROM Track t
+JOIN PlaylistTrack p ON t.TrackId = p.TrackId
+GROUP BY t.Name
+ORDER BY times DESC
+LIMIT 10
+
+/* What categories do the Albums fall */
+SELECT category,
+       count(*) AS total
+FROM
+  (SELECT i.Name AS Artist,
+          a.Title AS Album,
+          COUNT(t.TrackId) AS TotalTracks,
+          (CASE
+               WHEN count(t.TrackId) >= 9
+                    AND count(t.TrackId) <= 29 THEN 'Album'
+               WHEN count(t.TrackId) >1
+                    AND count(t.TrackId) < 9 THEN 'Extended Play'
+               WHEN count(t.TrackId) = 1 THEN 'Single'
+               WHEN count(t.TrackId) > 29 THEN 'Box Set'
+               ELSE 'Unclassified'
+           END) AS category
+   FROM Album a
+   JOIN Artist i ON a.ArtistId = i.ArtistId
+   JOIN Track t ON a.AlbumId = t.AlbumId
+   GROUP BY Artist,
+            Album
+   ORDER BY TotalTracks DESC) tab
+GROUP BY category
+ORDER BY total DESC
+
+/*Who are the top 10 customers by Purchases?​ */
+SELECT CONCAT(c.FirstName, ' ', c.LastName) AS CustomerName,
+       SUM(i.Total) AS Purchases
+FROM Customer c
+JOIN Invoice i ON i.CustomerId = c.CustomerId
+GROUP BY CustomerName
+ORDER BY Purchases DESC
+LIMIT 10
+
+/* Which artists have classical songs with average song length longer than the overall songs average and song length up to 8 minutes?​ */
+SELECT ArtistName,
+       round((SongLength/60000),1) AS SongLengthMinutes
+FROM
+  (SELECT i.Name AS ArtistName,
+          AVG(t.Milliseconds) AS SongLength
+   FROM Track t
+   JOIN Album a ON a.AlbumId = t.AlbumId
+   JOIN Artist i ON a.ArtistId = i.ArtistId
+   JOIN Genre g ON t.GenreId = g.GenreId
+   WHERE g.Name like 'Classical'
+   GROUP BY 1
+   HAVING AVG(t.Milliseconds) >
+     (SELECT avg(Milliseconds)
+      FROM Track)) AS tab
+WHERE SongLength/60000 <= 8
+ORDER BY 2 DESC
